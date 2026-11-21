@@ -1,0 +1,8 @@
+nvidia-cuda-cupti==13.2.86
+nvidia-cuda-runtime==13.2.86
+nvidia-cufft==12.2.0.57
+nvidia-cufile==1.17.1.22
+nvidia-cusolver==12.2.0.11
+nvidia-nvtx==13.2.86
+pip==26.3
+torch==2.15.0
