@@ -20,4 +20,4 @@ There are no logging scripts yet, but if someone creates them, point the output 
 
 ## Samples
 
-There are no scripts to extract samples, but if you want to visualize the data, experiment with augmentation, point the results towards `samples/`.
+`visualizer.py` extracts samples with specified indices, so that augmentation methods can be compared. Results will land in `samples/`.
