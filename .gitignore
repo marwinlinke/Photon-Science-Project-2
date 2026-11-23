@@ -1,2 +1,6 @@
 data/*
 !data/.gitkeep
+
+.idea/
+src/__marimo__
+src/__pycache__/
