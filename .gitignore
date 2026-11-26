@@ -8,7 +8,7 @@ src/__marimo__
 src/__pycache__/
 
 # training runs (checkpoints, logs, plots)
-runs/*
+runs/*/best.pt
 
 # python caches anywhere in the repo
 __pycache__/
