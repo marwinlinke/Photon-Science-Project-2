@@ -116,7 +116,7 @@ def adabn(model, X, Y, idx):
     """Copy of the model with BatchNorm statistics re-estimated on the given images (no labels used).
     None if the model has no BatchNorm."""
     m = copy.deepcopy(model)
-    bns = [b for b in m.modules() if isinstance(b, nn.BatchNorm2d)]
+    bns = [b for b in m.modules() if isinstance(b, nn.modules.batchnorm._BatchNorm)]   # 1d and 2d
     if not bns:
         return None
     m.eval()

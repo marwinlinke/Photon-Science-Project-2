@@ -64,7 +64,15 @@ python src/train.py --cache data/cache/<settings> --final                  # + e
 ```
 
 - `--model <name>` loads `src/models/<name>.py` and calls its `build()`; sizes are in its `CONFIG`.
-  New models go into `src/models/`.
+  New models go into `src/models/` and need `build()`, `CONFIG` and `features(x)` (activations
+  before the last layer, for t-SNE / domain adaptation). The fc models have a fixed input size
+  (`in_size` in their `CONFIG`, default 128): change it when training on a downsampled cache.
+
+  | model | input | params (128×128) |
+  |---|---|---|
+  | `conv_mixer` (default) | image, ConvMixer (patch embedding + depthwise/pointwise conv blocks) | 0.7M |
+  | `fc` | all pixels, fully connected 2048-1024-256 (best model of Project 1) | 36M |
+  | `fc_profiles` | mean per row and per column (H + W values), same fully connected layers | 2.9M |
 - Loss: MSE on standardized targets (sim_train mean/std); all metrics are in label units.
 - The best checkpoint is chosen on `sim_val` only. The experiment is evaluated after every epoch
   (`exp_adapt`) for monitoring, and once more with AdaBN (BatchNorm statistics re-estimated on
@@ -106,7 +114,7 @@ src/
   dataset.py         loads a cache + the fixed splits
   train.py           arguments, training loop and evaluation
   train_log.py       everything train.py writes: run folder, log.csv, loss.png, metrics, plots
-  models/            one file per model, each with build() and CONFIG
+  models/            one file per model, each with build(), CONFIG and features()
   visualizer.py      export sample images
 data/                raw data, caches, splits.json
 runs/                training runs
