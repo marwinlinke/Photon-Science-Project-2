@@ -75,7 +75,8 @@ Each run writes `runs/<date-time>_<model>[_<name>]/` (not in git):
 |---|---|
 | `config.json` | all arguments and settings, cache, split hash, model CONFIG, target normalization |
 | `model.txt` | the model layer by layer |
-| `log.csv` | one row per epoch: train / val / exp metrics, learning rate |
+| `log.csv` | one row per epoch: train / val / exp metrics (incl. MSE per axis), learning rate |
+| `loss.png` | MSE over epochs (mean, X, Y, Z) for train / sim_val / exp_adapt, updated every epoch |
 | `best.pt` | best checkpoint (lowest sim_val MSE) |
 | `metrics.json` | final R² / MAE / MSE per split (incl. AdaBN), each with a mean-prediction baseline |
 | `predictions_<split>.csv`, `pred_<split>.png` | true vs. predicted X/Y/Z |
@@ -102,7 +103,8 @@ src/
   preprocess_log.py  statistics, figures and index.csv for each cache
   data_tuning.py     marimo app for tuning the preprocessing
   dataset.py         loads a cache + the fixed splits
-  train.py           training and evaluation
+  train.py           arguments, training loop and evaluation
+  train_log.py       everything train.py writes: run folder, log.csv, loss.png, metrics, plots
   models/            one file per model, each with build() and CONFIG
   visualizer.py      export sample images
 data/                raw data, caches, splits.json
