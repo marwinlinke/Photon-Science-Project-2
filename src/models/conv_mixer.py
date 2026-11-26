@@ -36,13 +36,24 @@ class ConvMixer(nn.Module):
             ]
         )
 
-        self.head = nn.Sequential(
-            nn.AdaptiveAvgPool2d(1), nn.Flatten(), nn.Linear(embedding_dim, 3)
-        )
+        self.pool = nn.Sequential(nn.AdaptiveAvgPool2d(1), nn.Flatten())
+        self.head = nn.Linear(embedding_dim, 3)
 
-    def forward(self, x):
+    def features(self, x):
+        """(B, 1, H, W) -> (B, embedding_dim) latent features (t-SNE, domain discriminator)."""
         x = self.embedding(x)
         for dw, pw in zip(self.depthwise, self.pointwise):
             x = dw(x) + x
             x = pw(x)
-        return self.head(x)
+        return self.pool(x)
+
+    def forward(self, x):
+        return self.head(self.features(x))
+
+
+# sizes used by train.py (--model conv_mixer); logged in each run's config.json
+CONFIG = dict(patch_size=8, embedding_dim=256, num_blocks=8, kernel_size=9)
+
+
+def build():
+    return ConvMixer(**CONFIG)

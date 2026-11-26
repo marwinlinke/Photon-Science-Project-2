@@ -1,6 +1,6 @@
 """Statistics, figures and index for exported preprocessing caches.
 
-Layout written by preprocess.py / data_tuing.py:
+Layout written by preprocess.py / data_tuning.py:
     data/cache/
     ├── index.csv                 one row per cache (statistics only)
     └── <settings-name>/

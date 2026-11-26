@@ -18,7 +18,7 @@ def _():
     REPO = Path(__file__).resolve().parent.parent
     sys.path.insert(0, str(REPO / "src"))
     from preprocess import (DEFAULTS, cache_dir, cache_ok, domain_gap, estimate_background,
-                            export, output_paths, preprocess, run_name)
+                            export, output_paths, preprocess, read_subset, run_name)
     from preprocess_log import fig_comparison, fig_examples, summary
 
     return (
@@ -38,6 +38,7 @@ def _():
         output_paths,
         plt,
         preprocess,
+        read_subset,
         run_name,
         summary,
     )
@@ -49,8 +50,8 @@ def _(REPO, mo):
           "1. move the sliders: images update live · "
           "2. **Compute metrics**: domain gap + XYZ information, logged as a table · "
           "3. **Write to cache**: full preprocessed files for training")
-    sim_path = mo.ui.text(str(REPO / "data/project2_simulation_103k_norm16bin.h5"), label="simulation h5", full_width=True)
-    exp_path = mo.ui.text(str(REPO / "data/project2_experiment_norm16bin.h5"), label="experiment h5", full_width=True)
+    sim_path = mo.ui.text(str(REPO / "data/original_103k_norm16bin/sim.h5"), label="simulation h5", full_width=True)
+    exp_path = mo.ui.text(str(REPO / "data/original_103k_norm16bin/exp.h5"), label="experiment h5", full_width=True)
     out_dir = mo.ui.text(str(REPO / "data" / "cache"), label="cache root (one folder per setting)", full_width=True)
     n_blocks = mo.ui.slider(8, 64, value=40, step=8, label="sim subset for metrics (blocks of 128 images)",
                             show_value=True, debounce=True)
@@ -61,19 +62,10 @@ def _(REPO, mo):
 
 
 @app.cell
-def _(exp_path, h5py, mo, n_blocks, np, sim_path):
-    def load_sim_subset(path, n_blocks, block=128, seed=0):
-        # The sim file is chunked in blocks of 128 images; reading whole random blocks
-        # touches only those chunks (fast), random single images would read almost the whole file.
-        with h5py.File(path, "r") as f:
-            N = f["X"].shape[0]
-            starts = np.sort(np.random.default_rng(seed).choice(N // block, min(n_blocks, N // block), replace=False)) * block
-            X = np.concatenate([f["X"][s:s + block] for s in starts]).astype(np.float32)
-            Y = np.concatenate([f["Y"][s:s + block] for s in starts]).astype(np.float32)
-        return X, Y
-
+def _(exp_path, h5py, mo, n_blocks, np, read_subset, sim_path):
     with mo.status.spinner("loading data ..."):
-        Xs_raw, Ys = load_sim_subset(sim_path.value, n_blocks.value)
+        # whole random blocks of 128 images (fast to read from the chunked sim file)
+        Xs_raw, Ys = read_subset(sim_path.value, n_blocks.value * 128)
         with h5py.File(exp_path.value, "r") as _f:
             Xe_raw, Ye = _f["X"][:].astype(np.float32), _f["Y"][:].astype(np.float32)
     mo.md(f"loaded **sim** {Xs_raw.shape}, **exp** {Xe_raw.shape}")
@@ -159,6 +151,7 @@ def _(DEFAULTS, mo):
     min_range = mo.ui.number(0.0, 0.5, value=d["min_range"], step=0.001, label="min_range", debounce=True)
     dc_on = mo.ui.checkbox(value=bool(d["dark_cut"]), label="dark cutoff")
     dc_t = mo.ui.slider(0.01, 0.5, value=d["dark_cut"] or 0.15, step=0.01, label="threshold t", show_value=True, debounce=True)
+    flip_x = mo.ui.dropdown(["off", "sim", "exp"], value=d["flip_x"] or "off", label="mirror left-right")
 
     mo.hstack([
         mo.vstack([mo.md("**1. background**"), bg_on, bg_q]),
@@ -167,6 +160,7 @@ def _(DEFAULTS, mo):
         mo.vstack([mo.md("**2b./5./6. blur, downsample**"), sim_blur, blur, ds]),
         mo.vstack([mo.md("**7. scaling (brightness)**"), sc_on, sc_hi, min_range]),
         mo.vstack([mo.md("**8. dark cutoff (after scaling)**"), dc_on, dc_t]),
+        mo.vstack([mo.md("**9. flip x (one domain)**"), flip_x]),
     ], justify="start", gap=2)
     return (
         bg_on,
@@ -178,6 +172,7 @@ def _(DEFAULTS, mo):
         dc_on,
         dc_t,
         ds,
+        flip_x,
         min_range,
         off_on,
         off_pct,
@@ -201,6 +196,7 @@ def _(
     dc_on,
     dc_t,
     ds,
+    flip_x,
     min_range,
     mo,
     off_on,
@@ -224,6 +220,7 @@ def _(
         scale_pct=float(sc_hi.value) if sc_on.value else None,
         min_range=float(min_range.value),
         dark_cut=float(dc_t.value) if dc_on.value else None,
+        flip_x=None if flip_x.value == "off" else flip_x.value,
     )
     name = run_name(p)
     cmd = ("python src/preprocess.py"
@@ -234,7 +231,8 @@ def _(
            f" --sim-blur {p['sim_blur_sigma']:g} --blur {p['blur_sigma']:g} --downsample {p['downsample']}"
            f" --scale {p['scale_pct'] if p['scale_pct'] is not None else -1:g}"
            f" --min-range {p['min_range']:g}"
-           f" --dark-cut {p['dark_cut'] if p['dark_cut'] else -1:g}")
+           f" --dark-cut {p['dark_cut'] if p['dark_cut'] else -1:g}"
+           f" --flip-x {p['flip_x'] or 'off'}")
     mo.md(f"**name:** `{name}`\n\n**same conversion from the command line:**\n```bash\n{cmd}\n```")
     return name, p
 

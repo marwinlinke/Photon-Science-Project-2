@@ -1,7 +1,7 @@
 """Deterministic preprocessing for Project 2 (simulation + experiment).
 
 The same `preprocess()` is applied to both domains, in training and at inference.
-Random augmentations do NOT belong here (-> augment.py, training only).
+Random augmentations do NOT belong here (they are applied during training only).
 
 Steps (each can be switched off via its parameter):
   1. background  experiment only: subtract a per-pixel background template
@@ -19,6 +19,9 @@ Steps (each can be switched off via its parameter):
                  (min_range: images with less signal than this are not stretched)
   8. dark_cut    soft threshold after scaling: x -> max(x - t, 0) / (1 - t).
                  Removes dark noise that the scaling amplified; no hard jump at t.
+  9. flip_x      mirror left-right, ONE domain only ("sim" or "exp"), so both have the same
+                 orientation. Last step, so background template and crop still use each
+                 domain's original orientation. Labels are not changed.
 
 Usage (from repo root):
   python src/preprocess.py [--blur 1 --dark-cut 0.15 ...]       # convert + report
@@ -56,11 +59,12 @@ DEFAULTS = dict(
     scale_pct=99.5,           # divide each image by this percentile; None = off
     min_range=1e-3,           # images with smaller dynamic range are not stretched (pure noise)
     dark_cut=None,            # soft threshold after scaling, e.g. 0.1-0.2; None = off
+    flip_x=None,              # "sim" or "exp": mirror that domain left-right; None = off
 )
 
 
 # --------------------------------------------------------------------------- steps
-def estimate_background(X_exp, q=5.0, chunk=256):
+def estimate_background(X_exp, q=5.0):
     """Per-pixel q-th percentile over experiment images -> (H, W) template."""
     X_exp = np.asarray(X_exp, dtype=np.float32)
     return np.percentile(X_exp, q, axis=0).astype(np.float32)
@@ -107,6 +111,9 @@ def preprocess(X, p=DEFAULTS, background=None, sim=False):
     if t:
         X = np.clip((X - t) / (1 - t), 0, 1)
 
+    if p.get("flip_x") == ("sim" if sim else "exp"):
+        X = X[:, :, ::-1]
+
     return X.astype(np.float32)
 
 
@@ -131,6 +138,7 @@ def run_name(p):
         f"sc{f(p['scale_pct'])}" if p.get("scale_pct") is not None else "sc-off",
         f"mr{f(p.get('min_range', 1e-3))}",
         f"dc{f(p['dark_cut'])}" if p.get("dark_cut") else "dc-off",
+        f"fx{p['flip_x']}" if p.get("flip_x") else "fx-off",
     ])
 
 
@@ -264,8 +272,8 @@ def export(cache_root, p, sim_src, exp_src, background, examples, bars=None):
 # --------------------------------------------------------------------------- cli
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--sim", default="data/project2_simulation_103k_norm16bin.h5")
-    ap.add_argument("--exp", default="data/project2_experiment_norm16bin.h5")
+    ap.add_argument("--sim", default="data/original_103k_norm16bin/sim.h5")
+    ap.add_argument("--exp", default="data/original_103k_norm16bin/exp.h5")
     ap.add_argument("--out-dir", default="data/cache", help="cache root; one folder per setting inside")
     ap.add_argument("--force", action="store_true", help="recompute even if a matching cache file exists")
     ap.add_argument("--preview", nargs="?", const="auto", type=str,
@@ -284,6 +292,7 @@ def main():
     ap.add_argument("--scale", type=float, default=DEFAULTS["scale_pct"], help="high percentile, -1 = off")
     ap.add_argument("--min-range", type=float, default=DEFAULTS["min_range"])
     ap.add_argument("--dark-cut", type=float, default=-1, help="soft threshold after scaling (e.g. 0.15), -1 = off")
+    ap.add_argument("--flip-x", choices=["off", "sim", "exp"], default="off", help="mirror one domain left-right")
     a = ap.parse_args()
 
     p = dict(DEFAULTS)
@@ -295,6 +304,7 @@ def main():
         scale_pct=None if a.scale < 0 else a.scale,
         min_range=a.min_range,
         dark_cut=None if a.dark_cut <= 0 else a.dark_cut,
+        flip_x=None if a.flip_x == "off" else a.flip_x,
     )
     name = run_name(p)
     cdir = cache_dir(a.out_dir, p)

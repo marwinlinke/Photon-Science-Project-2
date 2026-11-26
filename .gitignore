@@ -1,5 +1,7 @@
 data/*
 !data/.gitkeep
+# fixed train/val/test splits: shared so everyone uses the same images
+!data/splits.json
 
 .idea/
 src/__marimo__
