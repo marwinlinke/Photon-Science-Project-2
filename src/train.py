@@ -33,9 +33,12 @@ RUNS_DIR = Path("runs")
 TRAIN_EVAL_SIZE = 10_000   # fixed sample of sim_train evaluated after every epoch (like sim_val)
 GPU_DATA_SHARE = 0.5  # move all data to the GPU if it needs less than this share of the free GPU memory
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-# bfloat16 mixed precision on GPUs that support it (faster, less memory), otherwise float32
+# bfloat16 mixed precision only on GPUs with native bf16 (Ampere and newer: A100, H100, RTX 30xx+),
+# otherwise float32. including_emulation=False: older GPUs (e.g. Turing, Quadro T2000) would only
+# emulate bf16, which is slower than float32.
 AUTOCAST = (lambda: torch.autocast("cuda", dtype=torch.bfloat16)) \
-    if DEVICE.type == "cuda" and torch.cuda.is_bf16_supported() else contextlib.nullcontext
+    if DEVICE.type == "cuda" and torch.cuda.is_bf16_supported(including_emulation=False) \
+    else contextlib.nullcontext
 
 
 # --------------------------------------------------------------------------- arguments

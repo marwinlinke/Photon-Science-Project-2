@@ -11,11 +11,12 @@ All commands are run **from the repo root** (paths like `data/` and `runs/` are 
 ## Setup
 
 ```
-pip install -r requirements.txt          # training (server)
-pip install -r requirements-local.txt    # + preprocessing and tuning app (local)
+pip install -r requirements.txt          # preprocessing + training (server and local)
+pip install -r requirements-local.txt    # + marimo tuning app (local)
 ```
 
-Preprocessing runs locally; the server only trains on the finished cache.
+Caches can be built on the server (`preprocess.py` needs only `requirements.txt`), so the
+3.4 GB cache files do not have to be copied; only the tuning app is local.
 
 ## Data
 
