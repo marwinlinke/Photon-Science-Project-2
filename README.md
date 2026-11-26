@@ -11,8 +11,11 @@ All commands are run **from the repo root** (paths like `data/` and `runs/` are 
 ## Setup
 
 ```
-pip install -r requirements.txt
+pip install -r requirements.txt          # training (server)
+pip install -r requirements-local.txt    # + preprocessing and tuning app (local)
 ```
+
+Preprocessing runs locally; the server only trains on the finished cache.
 
 ## Data
 
@@ -43,7 +46,8 @@ with `sim.h5`, `exp.h5`, `stats.md` / `stats.json` and `figures/`.
 An existing cache with the same settings is reused (`--force` recomputes);
 `--no-write --preview` only shows examples and the domain-gap check.
 
-To tune the settings interactively (live images, domain-gap and XYZ metrics, write cache):
+To tune the settings interactively (live images, domain-gap and XYZ metrics, write cache;
+needs `requirements-local.txt`):
 
 ```
 marimo edit src/data_tuning.py

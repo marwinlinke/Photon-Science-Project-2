@@ -1,3 +1,8 @@
+# Preprocessing tuning app (marimo notebook).
+# Start from the repo root:
+#     marimo edit src/data_tuning.py     # editable notebook in the browser
+#     marimo run src/data_tuning.py      # app view only
+# Needs: pip install -r requirements-local.txt (local only; the server does not need marimo)
 import marimo
 
 __generated_with = "0.25.1"

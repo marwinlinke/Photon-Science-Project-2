@@ -1,0 +1,5 @@
+# local preprocessing tools (preprocess.py, data_tuning.py); the server only needs requirements.txt
+-r requirements.txt
+scipy
+scikit-learn
+marimo

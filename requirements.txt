@@ -2,6 +2,3 @@ torch
 h5py
 numpy
 matplotlib
-scipy
-scikit-learn
-marimo
