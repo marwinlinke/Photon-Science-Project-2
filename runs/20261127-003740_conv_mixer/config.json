@@ -1,0 +1,60 @@
+{
+  "args": {
+    "cache": "data/cache/bg1_crop-off_off3_sqrt0_sb0.75_blur0_ds1_sc98.5_mr0.05_dc0.3_fxsim",
+    "model": "conv_mixer",
+    "epochs": 100,
+    "lr": 0.002,
+    "name": "",
+    "seed": 0,
+    "final": false,
+    "limit": 0
+  },
+  "batch_size": 256,
+  "weight_decay": 0.0001,
+  "optimizer": "AdamW + OneCycleLR",
+  "loss": "MSE",
+  "device": "cuda",
+  "bf16": true,
+  "params": 719875,
+  "target_norm": {
+    "mean": [
+      0.5054894685745239,
+      0.5242750644683838,
+      0.7337279915809631
+    ],
+    "std": [
+      0.1972017139196396,
+      0.13549143075942993,
+      0.16156214475631714
+    ],
+    "labels": "XYZ"
+  },
+  "data_placement": {
+    "data_on": "gpu",
+    "data_gb": 3.43,
+    "gpu_free_gb": 84.6,
+    "gpu_total_gb": 85.1
+  },
+  "model_config": {
+    "patch_size": 8,
+    "embedding_dim": 256,
+    "num_blocks": 8,
+    "kernel_size": 9
+  },
+  "split": {
+    "file": "data/splits.json",
+    "sha256": "91110ecc794c31bd",
+    "n_sim": 103163,
+    "n_exp": 1621,
+    "val_frac": 0.1,
+    "exp_test_frac": 0.3,
+    "tile": 0.1,
+    "seed": 0
+  },
+  "split_sizes": {
+    "sim_train": 92847,
+    "sim_val": 10316,
+    "exp_adapt": 1126,
+    "exp_test": 495
+  }
+}
