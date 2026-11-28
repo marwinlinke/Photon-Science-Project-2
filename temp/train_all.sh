@@ -1,29 +1,32 @@
 #!/bin/bash
-# Train all three models (conv_mixer, fc, fc_profiles) on the ORIGINAL data (no preprocessing),
-# one after another.
+# Train several models one after another on one prepared dataset (training only: the data must
+# already exist, see below).
 #
-#   cd Photon-Science-Project-2      # repo root, with .venv set up (see README)
-#   sbatch temp/train_all.sh                  # all three models
-#   sbatch temp/train_all.sh fc fc_profiles   # only these (e.g. after a time-out)
-#   squeue -u $USER                  # job state
-#   tail -f slurm-train_all-<jobid>.out
+#   cd Photon-Science-Project-2                                   # repo root, with .venv (see README)
+#   sbatch temp/train_all.sh                                      # all four models, DATA=flip
+#   sbatch temp/train_all.sh fc cnn_coord                         # only these models
+#   sbatch --export=ALL,DATA=preprocessed1 temp/train_all.sh      # other data (see DATA below)
+#   squeue -u $USER;  tail -f slurm-train_all-<jobid>.out
 #
-# train.py expects a folder with sim.h5 + exp.h5, so data/original/ gets two symlinks to the raw
-# files in /vol/tmp/feueforp (nothing is copied). Same images and labels as the caches, so
-# data/splits.json and the split are the same as for the preprocessed runs.
-# Each run writes runs/<date-time>_<model>_original/.
+# DATA (each run writes runs/<date-time>_<model>_<DATA>/; same images, labels and splits in all):
+#   flip           original data, simulation mirrored left-right, nothing else. Build once with
+#                    python src/preprocess.py --sim /vol/tmp/feueforp/project2_simulation_103k_norm16bin.h5
+#                      --exp /vol/tmp/feueforp/project2_experiment_norm16bin.h5 --bg-quantile -1
+#                      --offset-pct -1 --sim-blur 0 --blur 0 --downsample 1 --scale -1 --dark-cut -1 --flip-x sim
+#   original       the raw files. Set up once with
+#                    mkdir -p data/original
+#                    ln -s /vol/tmp/feueforp/project2_simulation_103k_norm16bin.h5 data/original/sim.h5
+#                    ln -s /vol/tmp/feueforp/project2_experiment_norm16bin.h5 data/original/exp.h5
+#   preprocessed1  full preprocessing + flip (preprocess.py with --bg-quantile 1 --offset-pct 3
+#                    --sim-blur 0.75 --blur 0 --downsample 1 --scale 98.5 --min-range 0.05
+#                    --dark-cut 0.3 --flip-x sim)
 #
-# Resources are kept small so the job starts sooner (short jobs can fill gaps in the queue).
-# Expected runtime: conv_mixer ~50 min (28 s/epoch on the A100-class GPU), fc and fc_profiles
-# faster, plus ~3 min data loading per model -> about 1.5 h. If the limit is hit, the models that
-# already finished keep their complete run folders; only the running one is cut off.
-# --dependency=singleton: at most one job named train_all of yours runs at a time; submitting it
-# again just queues behind the first instead of taking a second GPU.
+# Expected runtime on an A100 (100 epochs): conv_mixer ~50 min, cnn_coord ~30 min, fc and
+# fc_profiles ~3 min each, plus ~3 min data loading per model.
+# --dependency=singleton: at most one train_all job of yours runs at a time.
 #SBATCH --job-name=train_all
 #SBATCH --partition=gpu
 #SBATCH --gres=gpu:a10080gb:1
-# only A100s (about 2x faster than the RTX 6000 on gruenau1/2, but only 6 exist -> may wait longer):
-# replace the line above by   #SBATCH --gres=gpu:a10080gb:1
 #SBATCH --cpus-per-task=2
 #SBATCH --mem=16G
 #SBATCH --time=03:30:00
@@ -31,30 +34,32 @@
 #SBATCH --output=slurm-%x-%j.out
 
 EPOCHS=100
-MODELS="${*:-conv_mixer fc fc_profiles}"   # models given to sbatch, default all three
-SIM=/vol/tmp/feueforp/project2_simulation_103k_norm16bin.h5
-EXP=/vol/tmp/feueforp/project2_experiment_norm16bin.h5
-DATA=data/original
+MODELS="${*:-conv_mixer fc fc_profiles cnn_coord}"   # models given to sbatch, default all four
+DATA="${DATA:-flip}"
+
+case "$DATA" in
+    original)      CACHE=data/original ;;
+    flip)          CACHE=data/cache/bg-off_crop-off_off-off_sqrt0_sb0_blur0_ds1_sc-off_mr0.001_dc-off_fxsim ;;
+    preprocessed1) CACHE=data/cache/bg1_crop-off_off3_sqrt0_sb0.75_blur0_ds1_sc98.5_mr0.05_dc0.3_fxsim ;;
+    *)             echo "unknown DATA=$DATA (original, flip, preprocessed1)"; exit 1 ;;
+esac
 
 cd "$SLURM_SUBMIT_DIR"
 source .venv/bin/activate
 export PYTHONUNBUFFERED=1   # print each line immediately (otherwise the .out log fills only in chunks)
 
-echo "job $SLURM_JOB_ID on $(hostname), $(date)"
+echo "job $SLURM_JOB_ID on $(hostname), $(date) | DATA=$DATA | models: $MODELS"
 nvidia-smi --query-gpu=name,memory.total --format=csv,noheader
 python -c "import torch; print('torch', torch.__version__, '| cuda', torch.cuda.is_available())"
 
-# ---- data folder: symlinks to the raw files
-mkdir -p "$DATA"
-ln -sfn "$SIM" "$DATA/sim.h5"
-ln -sfn "$EXP" "$DATA/exp.h5"
-[ -r "$DATA/sim.h5" ] && [ -r "$DATA/exp.h5" ] || { echo "raw files not readable: $SIM / $EXP"; exit 1; }
+[ -r "$CACHE/sim.h5" ] && [ -r "$CACHE/exp.h5" ] || {
+    echo "no data in $CACHE: build it first (command in the header of this script)"; exit 1; }
 
 # ---- training; a failed model does not stop the others
 failed=""
 for m in $MODELS; do
-    echo; echo "===== $m ($EPOCHS epochs, original data), $(date)"
-    python src/train.py --cache "$DATA" --model "$m" --epochs "$EPOCHS" --name original || failed="$failed $m"
+    echo; echo "===== $m ($EPOCHS epochs, DATA=$DATA), $(date)"
+    python src/train.py --cache "$CACHE" --model "$m" --epochs "$EPOCHS" --name "$DATA" || failed="$failed $m"
 done
 
 echo; echo "done $(date)"
