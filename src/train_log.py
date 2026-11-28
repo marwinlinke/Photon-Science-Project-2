@@ -65,7 +65,7 @@ def epoch_row(ep, train_loss, mt, mv, me, lr, seconds):
 def log_epoch(run, rows, best_ep, is_best):
     """Rewrite log.csv and loss.png with all rows so far, print one line for the last epoch."""
     with open(run / "log.csv", "w", newline="") as f:
-        w = csv.DictWriter(f, fieldnames=list(rows[0]))
+        w = csv.DictWriter(f, fieldnames=list(rows[0]), lineterminator="\n")
         w.writeheader(); w.writerows(rows)
     plot_losses(rows, best_ep, run / "loss.png")
     r = rows[-1]
