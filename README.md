@@ -73,6 +73,7 @@ python src/train.py --cache data/cache/<settings> --final                  # + e
   | `conv_mixer` (default) | image, ConvMixer (patch embedding + depthwise/pointwise conv blocks) | 0.7M |
   | `fc` | all pixels, fully connected 2048-1024-256 (best model of Project 1) | 36M |
   | `fc_profiles` | mean per row and per column (H + W values), same fully connected layers | 2.9M |
+  | `cnn_coord` | image + x/y coordinate maps (CoordConv), 4 conv blocks, flattened 8×8 grid + MLP; keeps position information | 1.1M |
 - Loss: MSE on standardized targets (sim_train mean/std); all metrics are in label units.
 - The best checkpoint is chosen on `sim_val` only. The experiment is evaluated after every epoch
   (`exp_adapt`) for monitoring, and once more with AdaBN (BatchNorm statistics re-estimated on
